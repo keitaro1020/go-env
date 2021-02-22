@@ -112,18 +112,54 @@ func getValueFromEnv(field reflect.StructField, options Options) (string, error)
 }
 
 func setValue(field reflect.Value, structField reflect.StructField, value string) error {
-	conv, ok := convertFuncMap[structField.Type.Kind()]
-	if !ok {
-		return fmt.Errorf("%w [%v]", ErrNotSupportedType, structField.Type.Name())
+	var convFunc func(reflect.Value, string) (reflect.Value, error)
+	switch structField.Type.Kind() {
+	case reflect.Slice:
+		convFunc = convSlice
+	default:
+		convFunc = convValue
 	}
 
-	val, err := conv(value)
+	val, err := convFunc(field, value)
 	if err != nil {
 		return err
 	}
 
-	field.Set(reflect.ValueOf(val).Convert(structField.Type))
+	field.Set(val)
 	return nil
+}
+
+var (
+	zeroValue = reflect.Value{}
+)
+
+func convValue(field reflect.Value, v string) (reflect.Value, error) {
+	conv, ok := convertFuncMap[field.Kind()]
+	if !ok {
+		return zeroValue, fmt.Errorf("%w [%v]", ErrNotSupportedType, field)
+	}
+
+	val, err := conv(v)
+	if err != nil {
+		return zeroValue, err
+	}
+
+	return reflect.ValueOf(val).Convert(field.Type()), nil
+}
+
+func convSlice(field reflect.Value, v string) (reflect.Value, error) {
+	vs := strings.Split(v, ",")
+	slice := reflect.MakeSlice(field.Type(), len(vs), len(vs))
+	for i := range vs {
+		elm := slice.Index(i)
+		v, err := convValue(elm, vs[i])
+		if err != nil {
+			return zeroValue, err
+		}
+		slice.Index(i).Set(v)
+	}
+
+	return slice, nil
 }
 
 func getFieldKey(structField reflect.StructField) string {

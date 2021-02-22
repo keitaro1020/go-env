@@ -58,6 +58,10 @@ func TestParse(t *testing.T) {
 		Bool bool
 	}
 
+	type singleStringArrayField struct {
+		StringArray []string
+	}
+
 	type notSupportType struct {
 		NotSupportType interface{}
 	}
@@ -442,6 +446,15 @@ func TestParse(t *testing.T) {
 				return os.Setenv("BOOL", "true")
 			},
 			want:    &singleBoolField{Bool: true},
+			wantErr: false,
+		},
+		{
+			name: "ok:string_array_value",
+			args: args{v: &singleStringArrayField{}},
+			preparation: func() error {
+				return os.Setenv("STRING_ARRAY", "abcd,1234,ABCD")
+			},
+			want:    &singleStringArrayField{StringArray: []string{"abcd", "1234", "ABCD"}},
 			wantErr: false,
 		},
 	}
