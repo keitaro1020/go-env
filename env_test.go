@@ -1,6 +1,7 @@
 package env_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -443,6 +444,63 @@ func TestParse(t *testing.T) {
 			}
 			if diff := cmp.Diff(tt.args.v, tt.want); diff != "" {
 				t.Errorf("Parse() diff = %v", diff)
+			}
+		})
+	}
+}
+
+func BenchmarkParse1(b *testing.B) {
+	type bench struct {
+		String string
+		Int    int
+	}
+
+	os.Setenv("STRING", "Stringggg")
+	os.Setenv("INT", "123456")
+	for i := 0; i < b.N; i++ {
+		env.Parse(&bench{})
+	}
+}
+func BenchmarkParse2(b *testing.B) {
+	type bench struct {
+		Level1String string
+		Level1       struct {
+			Level2String string
+			Level2       struct {
+				Level3String string
+			}
+		}
+	}
+
+	os.Setenv("LEVEL1_STRING", "Stringggg")
+	os.Setenv("LEVEL1_LEVEL2_STRING", "Stringggg")
+	os.Setenv("LEVEL1_LEVEL2_LEVEL3_STRING", "Stringggg")
+	for i := 0; i < b.N; i++ {
+		env.Parse(&bench{})
+	}
+}
+
+func Test_toSnakeCase(t *testing.T) {
+	type args struct {
+		input string
+	}
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{input: "A", want: "A"},
+		{input: "a", want: "A"},
+		{input: "AB", want: "A_B"},
+		{input: "aB", want: "A_B"},
+		{input: "Ab", want: "AB"},
+		{input: "AbC", want: "AB_C"},
+		{input: "AbCdE", want: "AB_CD_E"},
+		{input: "Ab1Cde", want: "AB1_CDE"},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%v->%v", tt.input, tt.want), func(t *testing.T) {
+			if got := env.ToSnakeCase(tt.input); got != tt.want {
+				t.Errorf("ToSnakeCase() = %v, want %v", got, tt.want)
 			}
 		})
 	}

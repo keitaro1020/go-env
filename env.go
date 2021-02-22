@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -13,9 +12,6 @@ import (
 var (
 	ErrNotStructPointer = errors.New("it is not pointer to struct")
 	ErrNotSupportedType = errors.New("this field is not support type")
-
-	matchFirstCap = regexp.MustCompile("([A-Z])([A-Z][a-z])")
-	matchAllCap   = regexp.MustCompile("([a-z0-9])([A-Z])")
 
 	convertFuncMap = map[reflect.Kind]func(v string) (interface{}, error){
 		reflect.String: func(v string) (interface{}, error) {
@@ -135,10 +131,20 @@ func getFieldKey(structField reflect.StructField) string {
 }
 
 func toSnakeCase(input string) string {
-	output := matchFirstCap.ReplaceAllString(input, "${1}_${2}")
-	output = matchAllCap.ReplaceAllString(output, "${1}_${2}")
-	output = strings.ReplaceAll(output, "-", "_")
-	return strings.ToUpper(output)
+	n := strings.Builder{}
+	for i, v := range []byte(input) {
+		vIsCap := v >= 'A' && v <= 'Z'
+		vIsLow := v >= 'a' && v <= 'z'
+		if vIsLow {
+			v += 'A'
+			v -= 'a'
+		}
+		if vIsCap && i > 0 {
+			n.WriteByte('_')
+		}
+		n.WriteByte(v)
+	}
+	return n.String()
 }
 
 func isStruct(field reflect.Value, structField reflect.StructField) (reflect.Value, bool) {
