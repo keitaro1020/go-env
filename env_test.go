@@ -54,6 +54,10 @@ func TestParse(t *testing.T) {
 		Float64 float64
 	}
 
+	type singleBoolField struct {
+		Bool bool
+	}
+
 	type notSupportType struct {
 		NotSupportType interface{}
 	}
@@ -429,6 +433,15 @@ func TestParse(t *testing.T) {
 				return os.Setenv("ENV_KEY", "vaaaaaalue")
 			},
 			want:    &envKey{String: "vaaaaaalue"},
+			wantErr: false,
+		},
+		{
+			name: "ok:bool_value",
+			args: args{v: &singleBoolField{}},
+			preparation: func() error {
+				return os.Setenv("BOOL", "true")
+			},
+			want:    &singleBoolField{Bool: true},
 			wantErr: false,
 		},
 	}

@@ -53,6 +53,9 @@ var (
 		reflect.Float64: func(v string) (interface{}, error) {
 			return strconv.ParseFloat(v, 64)
 		},
+		reflect.Bool: func(v string) (interface{}, error) {
+			return strconv.ParseBool(v)
+		},
 	}
 )
 
