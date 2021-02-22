@@ -54,7 +54,7 @@ func main() {
 run
 ```shell
 $ go run main.go     
-cfg: &{Production:true Database:{Host:127.0.0.1 Port:3306 User:root Pass:password}}
+cfg: &{Production:true DBConfig:{Host:127.0.0.1 Port:3306 User:root Pass:password}}
 ```
 
 ## Supported types
