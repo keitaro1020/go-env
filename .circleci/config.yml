@@ -17,4 +17,4 @@ jobs:
             make test COVER_OUTPUT=${TEST_RESULTS}/
             make cover_output COVER_OUTPUT=${TEST_RESULTS}/
       - store_artifacts:
-          path: $TEST_RESULTS
+          path: /tmp/test-results
