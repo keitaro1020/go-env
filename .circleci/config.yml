@@ -1,10 +1,11 @@
-version: 2.0
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.0.2
 jobs:
   build:
     docker:
       - image: circleci/golang:latest
     working_directory: /go/src/github.com/keitaro1020/go-env
-
     environment:
       TEST_RESULTS: /tmp/test-results
 
@@ -14,4 +15,9 @@ jobs:
       - run:
           name: Run Unit Tests
           command: |
-            make test
+            make test COVER_OUTPUT=${TEST_RESULTS}/
+            make cover_output COVER_OUTPUT=${TEST_RESULTS}/
+      - store_artifacts:
+          path: /tmp/test-results
+      - codecov/upload:
+          file: /tmp/test-results/coverage.out
