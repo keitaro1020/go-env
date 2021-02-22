@@ -60,6 +60,11 @@ var (
 	}
 )
 
+type Option struct {
+	EnvPrefix string
+}
+type Options []Option
+
 func Parse(v interface{}) error {
 	ref := reflect.ValueOf(v)
 	if ref.Kind() != reflect.Ptr {
@@ -72,12 +77,21 @@ func Parse(v interface{}) error {
 	return doParse(ref.Elem())
 }
 
-func doParse(ref reflect.Value) error {
+func doParse(ref reflect.Value, options ...Option) error {
 	refType := ref.Type()
 	for i := 0; i < refType.NumField(); i++ {
 		refField := ref.Field(i)
 		refStructField := refType.Field(i)
-		value, err := getValueFromEnv(refStructField)
+
+		if sf, ok := isStruct(refField, refStructField); ok {
+			if err := doParse(sf, append(options, Option{
+				EnvPrefix: getFieldKey(refStructField),
+			})...); err != nil {
+				return err
+			}
+		}
+
+		value, err := getValueFromEnv(refStructField, options)
 		if err != nil {
 			return err
 		}
@@ -92,8 +106,9 @@ func doParse(ref reflect.Value) error {
 	return nil
 }
 
-func getValueFromEnv(field reflect.StructField) (string, error) {
-	val := os.Getenv(toSnakeCase(field.Name))
+func getValueFromEnv(field reflect.StructField, options Options) (string, error) {
+	key := strings.Join(append(options.EnvPrefixes(), getFieldKey(field)), "_")
+	val := os.Getenv(key)
 	return val, nil
 }
 
@@ -112,9 +127,45 @@ func setValue(field reflect.Value, structField reflect.StructField, value string
 	return nil
 }
 
+func getFieldKey(structField reflect.StructField) string {
+	if key := structField.Tag.Get("env_key"); key != "" {
+		return key
+	}
+	return toSnakeCase(structField.Name)
+}
+
 func toSnakeCase(input string) string {
 	output := matchFirstCap.ReplaceAllString(input, "${1}_${2}")
 	output = matchAllCap.ReplaceAllString(output, "${1}_${2}")
 	output = strings.ReplaceAll(output, "-", "_")
 	return strings.ToUpper(output)
+}
+
+func isStruct(field reflect.Value, structField reflect.StructField) (reflect.Value, bool) {
+	switch structField.Type.Kind() {
+	case reflect.Ptr:
+		if structField.Type.Elem().Kind() != reflect.Struct {
+			return field, false
+		}
+		if field.IsNil() {
+			field.Set(reflect.New(structField.Type.Elem()))
+		}
+		return field.Elem(), true
+	case reflect.Struct:
+		return field, true
+	default:
+		return field, false
+	}
+}
+
+func (ops Options) EnvPrefixes() []string {
+	var keyElms []string
+	for i := range ops {
+		op := ops[i]
+		if op.EnvPrefix == "" {
+			continue
+		}
+		keyElms = append(keyElms, op.EnvPrefix)
+	}
+	return keyElms
 }

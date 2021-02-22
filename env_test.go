@@ -1,13 +1,85 @@
-package env
+package env_test
 
 import (
 	"os"
 	"testing"
 
+	"github.com/keitaro1020/go-env"
+
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestParse(t *testing.T) {
+	type singleStringField struct {
+		String string
+	}
+
+	type singleIntField struct {
+		Int int
+	}
+	type singleInt8Field struct {
+		Int8 int8
+	}
+	type singleInt16Field struct {
+		Int16 int16
+	}
+	type singleInt32Field struct {
+		Int32 int32
+	}
+	type singleInt64Field struct {
+		Int64 int64
+	}
+
+	type singleUintField struct {
+		Uint uint
+	}
+	type singleUint8Field struct {
+		Uint8 uint8
+	}
+	type singleUint16Field struct {
+		Uint16 uint16
+	}
+	type singleUint32Field struct {
+		Uint32 uint32
+	}
+	type singleUint64Field struct {
+		Uint64 uint64
+	}
+
+	type singleFloat32Field struct {
+		Float32 float32
+	}
+	type singleFloat64Field struct {
+		Float64 float64
+	}
+
+	type notSupportType struct {
+		NotSupportType interface{}
+	}
+
+	type multipleField struct {
+		String string
+		Int    int
+	}
+
+	type nestStructLevel3 struct {
+		Level3String string
+	}
+	type nestStructLevel2 struct {
+		Level2String string
+		Level2       *nestStructLevel3
+	}
+	type nestPtrStructLevel1 struct {
+		Level1 *nestStructLevel2
+	}
+	type nestStructLevel1 struct {
+		Level1 nestStructLevel2
+	}
+
+	type envKey struct {
+		String string `env_key:"ENV_KEY"`
+	}
+
 	i := 10
 	type args struct {
 		v interface{}
@@ -304,6 +376,60 @@ func TestParse(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "ok:nest_ptr_struct",
+			args: args{v: &nestPtrStructLevel1{Level1: &nestStructLevel2{}}},
+			preparation: func() error {
+				return os.Setenv("LEVEL1_LEVEL2_STRING", "vaaaaaalue")
+			},
+			want: &nestPtrStructLevel1{
+				Level1: &nestStructLevel2{Level2String: "vaaaaaalue", Level2: &nestStructLevel3{}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "ok:nest_ptr_struct_nil_field",
+			args: args{v: &nestPtrStructLevel1{Level1: nil}},
+			preparation: func() error {
+				return os.Setenv("LEVEL1_LEVEL2_STRING", "vaaaaaalue")
+			},
+			want: &nestPtrStructLevel1{
+				Level1: &nestStructLevel2{Level2String: "vaaaaaalue", Level2: &nestStructLevel3{}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "ok:nest_struct",
+			args: args{v: &nestStructLevel1{Level1: nestStructLevel2{}}},
+			preparation: func() error {
+				return os.Setenv("LEVEL1_LEVEL2_STRING", "vaaaaaalue")
+			},
+			want: &nestStructLevel1{
+				Level1: nestStructLevel2{Level2String: "vaaaaaalue", Level2: &nestStructLevel3{}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "ok:nest_struct2",
+			args: args{v: &nestStructLevel1{Level1: nestStructLevel2{}}},
+			preparation: func() error {
+				os.Unsetenv("LEVEL1_LEVEL2_STRING")
+				return os.Setenv("LEVEL1_LEVEL2_LEVEL3_STRING", "vaaaaaalue")
+			},
+			want: &nestStructLevel1{
+				Level1: nestStructLevel2{Level2: &nestStructLevel3{Level3String: "vaaaaaalue"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "ok:env_key",
+			args: args{v: &envKey{}},
+			preparation: func() error {
+				return os.Setenv("ENV_KEY", "vaaaaaalue")
+			},
+			want:    &envKey{String: "vaaaaaalue"},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -312,7 +438,7 @@ func TestParse(t *testing.T) {
 					t.Errorf("preparation() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
-			if err := Parse(tt.args.v); (err != nil) != tt.wantErr {
+			if err := env.Parse(tt.args.v); (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if diff := cmp.Diff(tt.args.v, tt.want); diff != "" {
@@ -320,56 +446,4 @@ func TestParse(t *testing.T) {
 			}
 		})
 	}
-}
-
-type singleStringField struct {
-	String string
-}
-
-type singleIntField struct {
-	Int int
-}
-type singleInt8Field struct {
-	Int8 int8
-}
-type singleInt16Field struct {
-	Int16 int16
-}
-type singleInt32Field struct {
-	Int32 int32
-}
-type singleInt64Field struct {
-	Int64 int64
-}
-
-type singleUintField struct {
-	Uint uint
-}
-type singleUint8Field struct {
-	Uint8 uint8
-}
-type singleUint16Field struct {
-	Uint16 uint16
-}
-type singleUint32Field struct {
-	Uint32 uint32
-}
-type singleUint64Field struct {
-	Uint64 uint64
-}
-
-type singleFloat32Field struct {
-	Float32 float32
-}
-type singleFloat64Field struct {
-	Float64 float64
-}
-
-type notSupportType struct {
-	NotSupportType interface{}
-}
-
-type multipleField struct {
-	String string
-	Int    int
 }
